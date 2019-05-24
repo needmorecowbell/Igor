@@ -78,19 +78,72 @@ class Igor():
 
         return ip_list
 
-    def port_scan(self, ip, portlist=[22,21,3306,80,443]):
-        results = []
 
-        for port in portlist:
+    def port_scan_network(self, ips, pool_size=10):
+        """
+        Runs port scan on the network
+        :param pool_size: amount of parallel ping processes
+        :return: list of valid ip addresses
+        """
+
+        report = []
+        jobs = multiprocessing.Queue()
+        results = multiprocessing.Queue()
+
+        pool = [multiprocessing.Process(target=self.port_scan_job, args=(jobs, results)) for i in range(pool_size)]
+
+        for p in pool:
+            p.start()
+
+        # queue the ping processes 1-255
+        for ip in ips:
+            jobs.put(ip)
+
+        for p in pool:
+            jobs.put(None)
+
+        for p in pool:
+            p.join()
+
+        # collect the results
+        while not results.empty():
+            scan = results.get()
+            report.append(scan)
+
+        return report
+
+    def port_scan_job(self, jobs, results, portlist=[22,21,3306,80,443]):
+
+        report= {}
+
+        while True:
+            ip = jobs.get()
+
+            if ip is None:
+                break
+
             try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(5)
-                con = s.connect((ip,port))
-                results.append(port)
-                s.close()
-            except Exception as e:
+                open_ports = []
+
+                for port in portlist:
+                    try:
+                        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        s.settimeout(5)
+                        con = s.connect((ip,port))
+                        open_ports.append(port)
+                        s.close()
+                    except Exception as e:
+                        pass
+
+
+                report.update({ip:open_ports})
+                results.put(report)
+            except:
                 pass
 
+
+    def get_os(self):
+        return os.name
 
         return results
 
@@ -99,7 +152,9 @@ if __name__ == '__main__':
     print('Mapping...')
     i = Igor()
     ips = i.map_network()
-
-    for ip in ips:
-        print("target: "+ ip)
-        print(i.port_scan(ip))
+    print("Targets found")
+    print(ips)
+    print("Scanning...")
+    scan = i.port_scan_network(ips)
+    for report in scan:
+        print(report)
