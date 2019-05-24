@@ -3,7 +3,7 @@ import socket
 import multiprocessing
 import subprocess
 import os
-
+import argparse
 class Igor():
 
     def ping_job(self, job, results):
@@ -148,13 +148,55 @@ class Igor():
         return results
 
 if __name__ == '__main__':
+    print("""
+██╗ ██████╗  ██████╗ ██████╗
+██║██╔════╝ ██╔═══██╗██╔══██╗
+██║██║  ███╗██║   ██║██████╔╝
+██║██║   ██║██║   ██║██╔══██╗
+██║╚██████╔╝╚██████╔╝██║  ██║
+╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
 
-    print('Mapping...')
-    i = Igor()
-    ips = i.map_network()
-    print("Targets found")
-    print(ips)
-    print("Scanning...")
-    scan = i.port_scan_network(ips)
-    for report in scan:
-        print(report)
+    """)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-w", "--worm", action="store_true",
+                    help="sets Igor into worm mode")
+    parser.add_argument("-m","--map", action="store_true",
+                     help="return ips in local network")
+
+    parser.add_argument("-p","--pscan", action="store_true",
+                     help="return port scan of ips in local network")
+
+    parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                    action="store_true")
+
+    parser.add_argument("-o", "--out", dest="output",
+                    help="write results to FILE", metavar="FILE")
+
+    args = parser.parse_args()
+
+    igor = Igor()
+
+    if(args.worm):
+        if(args.verbose):
+            print("Worm Mode activated")
+
+    elif(args.map):
+        if(args.verbose):
+            print('Mapping...')
+
+        ips = igor.map_network()
+        print(ips)
+
+    elif(args.pscan):
+        if(args.verbose):
+            print('Mapping...')
+
+        ips = igor.map_network()
+
+        if(args.verbose):
+            print("Scanning...")
+
+        scan = igor.port_scan_network(ips)
+
+        for report in scan:
+            print(report)
