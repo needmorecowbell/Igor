@@ -4,6 +4,9 @@ import multiprocessing
 import subprocess
 import os
 import argparse
+import urllib.request
+import sys
+
 class Igor():
 
     def ping_job(self, job, results):
@@ -27,7 +30,7 @@ class Igor():
             except:
                 pass
 
-    def get_my_ip(self):
+    def get_local_ip(self):
         """
         Find my IP address
         :return:
@@ -38,6 +41,14 @@ class Igor():
         s.close()
         return ip
 
+    def get_public_ip(self):
+        try:
+            ip = urllib.request.urlopen('https://ipinfo.io/ip').read().decode('utf8')
+        except Exception as e:
+            print(e)
+            return None
+
+        return ip
 
     def map_network(self, pool_size=255):
         """
@@ -49,7 +60,7 @@ class Igor():
         ip_list = list()
 
         # get local IP and compose a base like 192.168.1.xxx
-        ip_parts = self.get_my_ip().split('.')
+        ip_parts = self.get_local_ip().split('.')
         base_ip = ip_parts[0] + '.' + ip_parts[1] + '.' + ip_parts[2] + '.'
 
         # prepare the jobs queue
@@ -82,7 +93,7 @@ class Igor():
     def port_scan_network(self, ips, pool_size=10):
         """
         Runs port scan on the network
-        :param pool_size: amount of parallel ping processes
+        :param pool_size: amount of parallel scan jobs
         :return: list of valid ip addresses
         """
 
@@ -95,7 +106,6 @@ class Igor():
         for p in pool:
             p.start()
 
-        # queue the ping processes 1-255
         for ip in ips:
             jobs.put(ip)
 
@@ -141,11 +151,14 @@ class Igor():
             except:
                 pass
 
-
     def get_os(self):
         return os.name
 
         return results
+    def get_hostname(self):
+        return socket.gethostname()
+    def get_platform(self):
+        return sys.platform
 
 if __name__ == '__main__':
     print("""
@@ -160,11 +173,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", "--worm", action="store_true",
                     help="sets Igor into worm mode")
+
     parser.add_argument("-m","--map", action="store_true",
                      help="return ips in local network")
 
     parser.add_argument("-p","--pscan", action="store_true",
                      help="return port scan of ips in local network")
+
+    parser.add_argument("--who", action="store_true",
+                     help="return useful notes about the executing system")
 
     parser.add_argument("-v", "--verbose", help="increase output verbosity",
                     action="store_true")
@@ -186,6 +203,14 @@ if __name__ == '__main__':
 
         ips = igor.map_network()
         print(ips)
+    elif(args.who):
+        if(args.verbose):
+            print("Getting info about host...")
+        print("Local IP: "+ igor.get_local_ip())
+        print("Public IP: "+ igor.get_public_ip())
+        print("Hostname: "+ igor.get_hostname())
+        print("Operating System: "+ igor.get_os())
+        print("Platform: "+igor.get_platform())
 
     elif(args.pscan):
         if(args.verbose):
