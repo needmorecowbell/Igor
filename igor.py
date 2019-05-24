@@ -94,12 +94,6 @@ class Igor():
 
         return results
 
-
-        for x in range(25):
-            if pscan(x):
-                print('Port',x,'is open')
-
-
 if __name__ == '__main__':
 
     print('Mapping...')
