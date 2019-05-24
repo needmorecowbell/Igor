@@ -7,6 +7,7 @@ import argparse
 import urllib.request
 import sys
 
+
 class Igor():
 
     def ping_job(self, job, results):
@@ -27,7 +28,7 @@ class Igor():
                 subprocess.check_call(['ping', '-c1', ip],
                                       stdout=DEVNULL)
                 results.put(ip)
-            except:
+            except BaseException:
                 pass
 
     def get_local_ip(self):
@@ -43,7 +44,8 @@ class Igor():
 
     def get_public_ip(self):
         try:
-            ip = urllib.request.urlopen('https://ipinfo.io/ip').read().decode('utf8')
+            ip = urllib.request.urlopen(
+                'https://ipinfo.io/ip').read().decode('utf8')
         except Exception as e:
             print(e)
             return None
@@ -67,7 +69,12 @@ class Igor():
         jobs = multiprocessing.Queue()
         results = multiprocessing.Queue()
 
-        pool = [multiprocessing.Process(target=self.ping_job, args=(jobs, results)) for i in range(pool_size)]
+        pool = [
+            multiprocessing.Process(
+                target=self.ping_job,
+                args=(
+                    jobs,
+                    results)) for i in range(pool_size)]
 
         for p in pool:
             p.start()
@@ -89,7 +96,6 @@ class Igor():
 
         return ip_list
 
-
     def port_scan_network(self, ips, pool_size=10):
         """
         Runs port scan on the network
@@ -101,7 +107,12 @@ class Igor():
         jobs = multiprocessing.Queue()
         results = multiprocessing.Queue()
 
-        pool = [multiprocessing.Process(target=self.port_scan_job, args=(jobs, results)) for i in range(pool_size)]
+        pool = [
+            multiprocessing.Process(
+                target=self.port_scan_job,
+                args=(
+                    jobs,
+                    results)) for i in range(pool_size)]
 
         for p in pool:
             p.start()
@@ -122,9 +133,9 @@ class Igor():
 
         return report
 
-    def port_scan_job(self, jobs, results, portlist=[22,21,3306,80,443]):
+    def port_scan_job(self, jobs, results, portlist=[22, 21, 3306, 80, 443]):
 
-        report= {}
+        report = {}
 
         while True:
             ip = jobs.get()
@@ -139,26 +150,125 @@ class Igor():
                     try:
                         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         s.settimeout(5)
-                        con = s.connect((ip,port))
+                        con = s.connect((ip, port))
                         open_ports.append(port)
                         s.close()
                     except Exception as e:
                         pass
 
-
-                report.update({ip:open_ports})
+                report.update({ip: open_ports})
                 results.put(report)
-            except:
+            except BaseException:
                 pass
+
+    def retrieve_ssh_passlist(self):
+        try:
+            authlist = urllib.request.urlopen(
+                'https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Default-Credentials/ssh-betterdefaultpasslist.txt').read().decode('utf8')
+        except Exception as e:
+            print(e)
+            return None
+        return authlist
+
+    def retrieve_ftp_passlist(self):
+        try:
+            authlist = urllib.request.urlopen(
+                'https://github.com/danielmiessler/SecLists/blob/master/Passwords/Default-Credentials/ftp-betterdefaultpasslist.txt').read().decode('utf8')
+        except Exception as e:
+            print(e)
+            return None
+        return authlist
+
+
+    def retrieve_mysql_passlist(self):
+        try:
+            authlist = urllib.request.urlopen(
+                'https://raw.githubusercontent.com/danielmiessler/SecLists/master/Passwords/Default-Credentials/mysql-betterdefaultpasslist.txt').read().decode('utf8')
+        except Exception as e:
+            print(e)
+            return None
+        return authlist
+
 
     def get_os(self):
         return os.name
 
         return results
+
     def get_hostname(self):
         return socket.gethostname()
+
     def get_platform(self):
         return sys.platform
+
+    def brute_force_ssh(self, host, authlist):
+        if(authlist is None):
+            print("No authlist available")
+            return None
+
+        for combo in authlist.split('\n'):
+            try:
+                user = combo.split(":", 1)[0]
+                pswd = combo.split(":", 1)[1]
+
+                # if combo is successful...
+                    #print(user+"@"+host+" :: "+pswd)
+            except Exception as e:
+                #print(e)
+                pass
+
+    def brute_force_ftp(self, host, authlist):
+        if(authlist is None):
+            print("No authlist available")
+            return None
+
+        for combo in authlist.split('\n'):
+            try:
+                user = combo.split(":", 1)[0]
+                pswd = combo.split(":", 1)[1]
+
+                # if combo is successful...
+                    #print(user+"@"+host+" :: "+pswd)
+            except Exception as e:
+                #print(e)
+                pass
+
+    def brute_force_mysql(self, host, authlist):
+        if(authlist is None):
+            print("No authlist available")
+            return None
+
+        for combo in authlist.split('\n'):
+            try:
+                user = combo.split(":", 1)[0]
+                pswd = combo.split(":", 1)[1]
+
+                # if combo is successful...
+                    #print(user+"@"+host+" :: "+pswd)
+            except Exception as e:
+                #print(e)
+                pass
+
+
+def setupArgs(parser):
+    parser.add_argument("-w", "--worm", action="store_true",
+                        help="sets Igor into worm mode")
+
+    parser.add_argument("-m", "--map", action="store_true",
+                        help="return ips in local network")
+
+    parser.add_argument("-p", "--pscan", action="store_true",
+                        help="return port scan of ips in local network")
+
+    parser.add_argument("--who", action="store_true",
+                        help="return useful notes about the executing system")
+
+    parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                        action="store_true")
+
+    parser.add_argument("-o", "--out", dest="output",
+                        help="write results to FILE", metavar="FILE")
+
 
 if __name__ == '__main__':
     print("""
@@ -171,24 +281,7 @@ if __name__ == '__main__':
 
     """)
     parser = argparse.ArgumentParser()
-    parser.add_argument("-w", "--worm", action="store_true",
-                    help="sets Igor into worm mode")
-
-    parser.add_argument("-m","--map", action="store_true",
-                     help="return ips in local network")
-
-    parser.add_argument("-p","--pscan", action="store_true",
-                     help="return port scan of ips in local network")
-
-    parser.add_argument("--who", action="store_true",
-                     help="return useful notes about the executing system")
-
-    parser.add_argument("-v", "--verbose", help="increase output verbosity",
-                    action="store_true")
-
-    parser.add_argument("-o", "--out", dest="output",
-                    help="write results to FILE", metavar="FILE")
-
+    setupArgs(parser)
     args = parser.parse_args()
 
     igor = Igor()
@@ -197,20 +290,62 @@ if __name__ == '__main__':
         if(args.verbose):
             print("Worm Mode activated")
 
+        if(args.verbose):
+            print("Grabbing auth combos...")
+
+        ssh_list = igor.retrieve_ssh_passlist()  # get basic auth list
+        ftp_list = igor.retrieve_ftp_passlist()
+        mysql_list = igor.retrieve_mysql_passlist()
+
+        if(args.verbose):
+            print("Mapping network...")
+
+        ips = igor.map_network()
+        print(ips)
+
+        if(args.verbose):
+            print("Scanning network...")
+        reports = igor.port_scan_network(ips)
+
+        for report in reports:
+            open_ports = list(report.values())[0]
+
+            if(22 in open_ports):
+                host=list(report.keys())[0]
+                if(args.verbose):
+                    print("Bruteforce SSH attempt on "+host+"...")
+                igor.brute_force_ssh(host, ssh_list)
+
+            if(21 in open_ports):
+                host = list(report.keys())[0]
+                if(args.verbose):
+                    print("Bruteforce FTP attempt on"+host+"...")
+                igor.brute_force_ftp(host,ftp_list)
+
+            if(3306 in open_ports):
+                host = list(report.keys())[0]
+                if(args.verbose):
+                    print("Bruteforce MYSQL attempt on"+host+"...")
+                igor.brute_force_mysql(host,mysql_list)
+
+
+
+
     elif(args.map):
         if(args.verbose):
             print('Mapping...')
 
         ips = igor.map_network()
         print(ips)
+
     elif(args.who):
         if(args.verbose):
             print("Getting info about host...")
-        print("Local IP: "+ igor.get_local_ip())
-        print("Public IP: "+ igor.get_public_ip())
-        print("Hostname: "+ igor.get_hostname())
-        print("Operating System: "+ igor.get_os())
-        print("Platform: "+igor.get_platform())
+        print("Local IP: " + igor.get_local_ip())
+        print("Public IP: " + igor.get_public_ip())
+        print("Hostname: " + igor.get_hostname())
+        print("Operating System: " + igor.get_os())
+        print("Platform: " + igor.get_platform())
 
     elif(args.pscan):
         if(args.verbose):
